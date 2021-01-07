@@ -1,0 +1,29 @@
+# 8 registers
+
+[ld and st can only read/write r0-r3]
+ld 000 0 XX YY
+st 000 1 XX YY
+
+[slt and xor only stores to r0]
+sltR0  001 0 XX YY
+xorR0  001 1 XX YY
+
+[srl shifts by 1]
+[and ands by 1]
+srl 010 0 0XXX
+and 010 0 1XXX
+j   010 1 iiii
+
+[add rx ry]
+add 011 XXX YY
+
+[sub rx ry]
+sub 100 XXX YY
+
+[can only read r0 or r1]
+bez 101 X iiii
+[-4 -3 -2 -1 0 1 2 3]
+
+[rx = rx + imm]
+addi 110 XXX ii
+[-2 -1 0 1]

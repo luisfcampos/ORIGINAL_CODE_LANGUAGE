@@ -1,0 +1,175 @@
+
+halt      111 0 0000
+ld        000 0 XXXY x
+st        000 1 XXXY x
+sltR7     001 0 XXYY x
+xor       001 1 XXYY x
+srl       010 0 0XXX x
+and       010 0 1XXX x
+j         010 1 iiii
+sub       100 XXX YY
+addi      110 XXX ii
+bez       101 XX iii
+add       011 XX YYY x
+init      111 1 iiii
+
+----------------------
+# $0 and $1 used mainly storing/loading
+
+(A+B)XORC = A1
+(A1 + B) XOR C
+
+
+#storing A[i]
+
+
+init 15
+sub $1 $0 ; $1 = $1 - $0 = 0 - 15 = -15
+sub $1 $0 ; $1 = $1 - $0 = -30
+sub $1 $0 ; $1 = $1 - $0 = -45
+sub $1 $0 ; $1 = $1 - $0 = -60
+init 13
+sub $1 $0 ; $1 = -73
+sub $5 $1 = $5 = $5 - $1 = 0 - -73 = 73
+init 15
+add $1 $0 15
+add $1 $0 30
+add $1 $0 45
+add $1 $0 60
+add $1 $0 75
+add $1 $0 90
+init 10
+add $1 $0 
+init 15
+add $2 $0
+add $3 $0 15
+add $3 $0 30
+add $3 $0 45
+init 6
+add $3 $0 51
+# $2, $5, $3 -> A, B, C
+add $2 $5   A + B: $2 = $2 + $5
+xor $2 $3  (A+B) XOR C: $2 = $2 XOR $3
+st $2 $0   $0 = 0 DM[0] = $2
+addi $1 -1 
+addi $0 1
+bez $1 1  # branch out of loop
+j -7      # loop 100x through jumping backs
+
+sub $1 $1   $1 = 0
+add $1 $0   $1 = 0 + 100
+add $2 $1  $2 = 100
+init 14
+add $1 $0   $1 = 114
+add $1 $0   $1 = 128 DM for width [128-227]
+init 0
+ld $3 $0    $3 = A[0]
+bez $3 skip(7)
+
+-> check if lsb is 1
+-> if it is 1 increment some register
+-> srl repeat 8x
+
+count:
+addi $11, $11, 1
+srl $8, $8, 1
+and $14, $9, $8		
+bne $14, $0, count
+j end
+loop2:
+
+4
+5
+6
+skip
+
+
+
+one register stores width memory address <- used to increment 128-227
+one register stores # of times we loop
+$0 used to count from 0-100
+$1 used to store into DM
+------------------------------------------------------------------------
+#part II
+addi $11, $0, 0
+addi $12, $0, 0x20A0		# M = 0x20A0
+addi $13, $0, 0x22A0		# W = 0x22A0
+addi $15, $0, 100
+lui $9, 0xFFFF
+ori $9, $9, 0xFFFF
+loop1:
+lw $8, 0($12)
+and $14, $9, $8                 #checks for a 1
+bne $14, $0, loop2
+j end
+count:
+addi $11, $11, 1
+srl $8, $8, 1
+and $14, $9, $8		
+bne $14, $0, count
+j end
+loop2:
+andi $14, $8, 1                 #check last digit
+bne $14, $0, count
+srl $8, $8, 1                  #if 0, shift right 1
+and $14, $9, $8
+bne $14, $0, loop2
+end:
+sw $11, 0($13)    
+addi $13, $13, 4                #increments the width address
+addi $12, $12, 4                #increments the data address
+addi $15, $15, -1 
+addi $11, $0, 0                #reset counter
+bne $15, $0, loop1
+
+-----------------------------
+addi $1, $0, 0x22A0 # register 1 = first index of W[]
+addi $2, $0, 1 # used to compare bit logic
+addi $3, $0, 100 # loop 100 times for array of 100
+addi $4, $0, 32 # use to track shifts
+addi $11, $0, 0 # track array looping
+part2:
+# register 8 + 9 used to keep track of first and last 1 bit
+add $8, $0, $0 # right most bit
+add $9, $0, $0 # left most bit
+add $15, $0, $0 # used to save previous value
+# register 5 counts number of times bits shifted
+add $5, $0, $0
+lw $6, -512($1) # loads A[i] into register 6
+lw $15, -516($1) # loads A[i-1] into register 15
+beq $6, $15, skip2
+beq $6, $0, skip # A[i] is 0
+loop2:
+# register 7 used to track 1's
+andi $7, $6, 1
+# shift register 6 right by one
+srl $6, $6, 1
+addi $5, $5, 1 # $5 += 1
+beq $2, $6, one # if A[i] shifted to the end results in 1 before 0, width = 1
+beq $7, $2, foundRight # branches if first 1 bit is found
+beq $6, $0, skip # skip when A[i] = 0 from shifting right
+bne $7, $2, loop2
+one:
+addi $10, $0, 1
+j skip2
+foundRight:
+addi $8, $5, -2 # tracks right most bit
+findLeft:
+andi $7, $6, 1
+bne $7, $2, After
+addi $9, $5, 0 # sets register 9 to the current bit being "looked" at
+After:
+srl $6, $6, 1
+addi $5, $5, 1 # $5 += 1
+beq $6, $0, skip
+bne $5, $4, findLeft # branches of bits shifted right 32 times
+skip:
+sub $10, $9, $8
+skip2:
+sw $10, 0($1)
+addi $1, $1, 4
+addi $11, $11, 1
+bne $11, $3, part2
+
+
+
